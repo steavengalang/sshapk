@@ -1,0 +1,76 @@
+name: Build APK & EXE
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk sshvps.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sshvps-apk
+          path: sshvps.apk
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows EXE
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build EXE
+        working-directory: windows
+        run: |
+          go mod tidy
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../sshvps.exe .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sshvps-exe
+          path: sshvps.exe
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          files: |
+            dist/sshvps-apk/sshvps.apk
+            dist/sshvps-exe/sshvps.exe
