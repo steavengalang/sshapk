@@ -1,0 +1,14 @@
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
+.DS_Store
+
+# Go
+windows/sshvps.exe
+windows/sshvps
+sshvps.exe
+sshvps.apk
